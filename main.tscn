@@ -1,0 +1,116 @@
+[gd_scene format=3 uid="uid://b4ajkm720xxyf"]
+
+[ext_resource type="PhysicsMaterial" path="res://marble_material.tres" id="1_mat"]
+[ext_resource type="Script" uid="uid://dl6g3hgfgx7xc" path="res://main.gd" id="2_script"]
+[ext_resource type="Script" uid="uid://bxk7wsbr77w0t" path="res://marble_visual.gd" id="3_visual"]
+[ext_resource type="Script" uid="uid://dirxs4wpmkds6" path="res://track_editor.gd" id="4_editor"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_marble"]
+radius = 16.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_goal"]
+size = Vector2(64, 64)
+
+[node name="Main" type="Node2D" unique_id=1913948582]
+script = ExtResource("2_script")
+
+[node name="Track" type="StaticBody2D" parent="." unique_id=1474265169]
+physics_material_override = ExtResource("1_mat")
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="Track" unique_id=1769746577]
+polygon = PackedVector2Array(100, 250, 265, 241, 433, 246, 585, 253, 728, 262, 881, 281, 1000, 520, 1150, 560, 1150, 700, 100, 700)
+
+[node name="Polygon2D" type="Polygon2D" parent="Track" unique_id=159710909]
+color = Color(0.25, 0.25, 0.32, 1)
+polygon = PackedVector2Array(100, 250, 265, 241, 433, 246, 585, 253, 728, 262, 881, 281, 1000, 520, 1150, 560, 1150, 700, 100, 700)
+
+[node name="TrackEditor" type="Node2D" parent="." unique_id=2052903751]
+script = ExtResource("4_editor")
+collision_polygon_path = NodePath("../Track/CollisionPolygon2D")
+fill_polygon_path = NodePath("../Track/Polygon2D")
+
+[node name="Boulders" type="Node2D" parent="." unique_id=1474852569]
+
+[node name="Springs" type="Node2D" parent="." unique_id=556523628]
+
+[node name="Marble" type="RigidBody2D" parent="." unique_id=498984980]
+position = Vector2(130, 100)
+physics_material_override = ExtResource("1_mat")
+linear_damp = 0.1
+angular_damp = 0.5
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Marble" unique_id=346307772]
+shape = SubResource("CircleShape2D_marble")
+
+[node name="Visual" type="Node2D" parent="Marble" unique_id=150582797]
+script = ExtResource("3_visual")
+
+[node name="Goal" type="Area2D" parent="." unique_id=1814276577]
+position = Vector2(1180, 540)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Goal" unique_id=1664754545]
+shape = SubResource("RectangleShape2D_goal")
+
+[node name="VisualMarker" type="Polygon2D" parent="Goal" unique_id=631589933]
+color = Color(0.2, 0.9, 0.3, 0.6)
+polygon = PackedVector2Array(-32, -32, 32, -32, 32, 32, -32, 32)
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1045942303]
+position = Vector2(640, 360)
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=104787862]
+
+[node name="Toolbar" type="HBoxContainer" parent="HUD" unique_id=808115714]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -260.0
+offset_top = 8.0
+offset_right = 260.0
+offset_bottom = 48.0
+grow_horizontal = 2
+theme_override_constants/separation = 8
+
+[node name="EditButton" type="Button" parent="HUD/Toolbar" unique_id=1635449093]
+custom_minimum_size = Vector2(96, 36)
+layout_mode = 2
+text = "Edit"
+
+[node name="PlayButton" type="Button" parent="HUD/Toolbar" unique_id=224620477]
+custom_minimum_size = Vector2(96, 36)
+layout_mode = 2
+text = "Play"
+
+[node name="LevelDropdown" type="OptionButton" parent="HUD/Toolbar" unique_id=895702017]
+custom_minimum_size = Vector2(180, 36)
+layout_mode = 2
+
+[node name="ResetProgressButton" type="Button" parent="HUD/Toolbar" unique_id=774380200]
+custom_minimum_size = Vector2(120, 36)
+layout_mode = 2
+text = "Reset Progress"
+
+[node name="WinPanel" type="VBoxContainer" parent="HUD" unique_id=850838516]
+offset_left = 480.0
+offset_top = 200.0
+offset_right = 800.0
+offset_bottom = 340.0
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="WinLabel" type="Label" parent="HUD/WinPanel" unique_id=2068692220]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "You won!"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="NextButton" type="Button" parent="HUD/WinPanel" unique_id=1401925094]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "Next Level →"
+
+[node name="ResetConfirmDialog" type="ConfirmationDialog" parent="HUD" unique_id=34118248]
+title = "Reset Progress?"
+size = Vector2i(400, 120)
+dialog_text = "This will lock all levels except Level 1. Are you sure?"
