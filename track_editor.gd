@@ -49,6 +49,31 @@ func load_level(level: Dictionary) -> void:
 	queue_redraw()
 
 
+func snapshot_track() -> PackedVector2Array:
+	return top_points.duplicate()
+
+
+func restore_track(snapshot: PackedVector2Array) -> void:
+	top_points = snapshot.duplicate()
+	_rebuild_polygon()
+	queue_redraw()
+
+
+func destroy_in_radius(center: Vector2, radius: float) -> void:
+	var kept: PackedVector2Array = PackedVector2Array()
+	var kept_locks: Array = []
+	for i in top_points.size():
+		if top_points[i].distance_to(center) > radius:
+			if i in locked_indices:
+				kept_locks.append(kept.size())
+			kept.append(top_points[i])
+	top_points = kept
+	locked_indices = kept_locks
+	dragged_index = -1
+	_rebuild_polygon()
+	queue_redraw()
+
+
 func set_editing(enabled: bool) -> void:
 	editing = enabled
 	dragged_index = -1
@@ -143,6 +168,8 @@ func _push_out_of_rects(pos: Vector2, rects: Array) -> Vector2:
 
 func _rebuild_polygon() -> void:
 	if top_points.size() < 2:
+		collision_polygon.polygon = PackedVector2Array()
+		fill_polygon.polygon = PackedVector2Array()
 		return
 	var min_x: float = top_points[0].x
 	var max_x: float = top_points[0].x

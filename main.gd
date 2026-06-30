@@ -2,6 +2,9 @@ extends Node2D
 
 const Levels = preload("res://levels.gd")
 const SpringScene = preload("res://spring.gd")
+const BombScene = preload("res://bomb.gd")
+const PoisonScene = preload("res://poison_block.gd")
+const ShooterScene = preload("res://bomb_shooter.gd")
 const SAVE_PATH: String = "user://progress.save"
 
 enum Mode { EDIT, PLAY }
@@ -20,12 +23,31 @@ enum Mode { EDIT, PLAY }
 @onready var reset_progress_button: Button = $HUD/Toolbar/ResetProgressButton
 @onready var reset_confirm_dialog: ConfirmationDialog = $HUD/ResetConfirmDialog
 
+var bombs_root: Node2D
+var poisons_root: Node2D
+var shooters_root: Node2D
 var current_mode: int = Mode.EDIT
 var current_level_index: int = 0
 var highest_unlocked_index: int = 0
 
+var _track_snapshot: PackedVector2Array = PackedVector2Array()
+var _level_boulders: Array = []
+var _level_springs: Array = []
+var _level_bombs: Array = []
+var _level_poisons: Array = []
+var _level_shooters: Array = []
+
 
 func _ready() -> void:
+	bombs_root = Node2D.new()
+	bombs_root.name = "Bombs"
+	add_child(bombs_root)
+	poisons_root = Node2D.new()
+	poisons_root.name = "Poisons"
+	add_child(poisons_root)
+	shooters_root = Node2D.new()
+	shooters_root.name = "Shooters"
+	add_child(shooters_root)
 	_load_progress()
 	win_panel.hide()
 	goal.body_entered.connect(_on_goal_body_entered)
@@ -60,20 +82,114 @@ func _load_level(idx: int) -> void:
 	var level: Dictionary = Levels.LEVELS[idx]
 	track_editor.load_level(level)
 	goal.position = level.goal
-	_spawn_boulders(level.get("boulders", []))
-	_spawn_springs(level.get("springs", []))
+	_level_boulders = level.get("boulders", []).duplicate()
+	_level_springs = level.get("springs", []).duplicate()
+	_level_bombs = level.get("bombs", []).duplicate()
+	_level_poisons = level.get("poisons", []).duplicate()
+	_level_shooters = level.get("shooters", []).duplicate()
+	_track_snapshot = PackedVector2Array()
+	_spawn_world()
 	level_dropdown.selected = idx
 	_set_mode(Mode.EDIT)
 
 
-func _spawn_springs(positions: Array) -> void:
+func _spawn_world() -> void:
+	_spawn_boulders(_level_boulders)
+	_spawn_springs(_level_springs, _level_boulders)
+	_spawn_bombs(_level_bombs)
+	_spawn_poisons(_level_poisons)
+	_spawn_shooters(_level_shooters)
+
+
+func _spawn_springs(positions: Array, boulder_rects: Array) -> void:
 	for child in springs_root.get_children():
 		child.queue_free()
-	for pos in positions:
+	for entry in positions:
 		var spring: Area2D = Area2D.new()
 		spring.set_script(SpringScene)
-		spring.position = pos
+		spring.boulders = boulder_rects
+		if entry is Dictionary:
+			spring.position = entry.get("pos", Vector2.ZERO)
+			var v: String = entry.get("variant", "yellow")
+			spring.variant = v
+			spring.locked = entry.get("locked", false)
+			if v == "blue":
+				spring.bounce_strength = 700.0
+			elif v == "red":
+				spring.bounce_strength = 1700.0
+			elif v == "orange":
+				spring.bounce_strength = 700.0
+			if entry.has("rotation"):
+				spring.rotation = entry.rotation
+		else:
+			spring.position = entry
 		springs_root.add_child(spring)
+
+
+func _spawn_bombs(positions: Array) -> void:
+	for child in bombs_root.get_children():
+		child.queue_free()
+	for entry in positions:
+		var bomb: RigidBody2D = RigidBody2D.new()
+		bomb.set_script(BombScene)
+		var pos: Vector2 = entry if entry is Vector2 else entry.get("pos", Vector2.ZERO)
+		bomb.position = pos
+		if entry is Dictionary:
+			bomb.variant = entry.get("variant", "black")
+			bomb.locked = entry.get("locked", false)
+		bomb.exploded.connect(_on_bomb_exploded)
+		bombs_root.add_child(bomb)
+
+
+func _spawn_poisons(positions: Array) -> void:
+	for child in poisons_root.get_children():
+		child.queue_free()
+	for entry in positions:
+		var poison: RigidBody2D = RigidBody2D.new()
+		poison.set_script(PoisonScene)
+		var pos: Vector2 = entry if entry is Vector2 else entry.get("pos", Vector2.ZERO)
+		poison.position = pos
+		if entry is Dictionary:
+			poison.locked = entry.get("locked", false)
+		poison.marble_touched.connect(_on_poison_touched)
+		poisons_root.add_child(poison)
+
+
+func _on_poison_touched() -> void:
+	if current_mode == Mode.PLAY:
+		_reset_marble()
+
+
+func _spawn_shooters(positions: Array) -> void:
+	for child in shooters_root.get_children():
+		child.queue_free()
+	for entry in positions:
+		var shooter: Node2D = Node2D.new()
+		shooter.set_script(ShooterScene)
+		var pos: Vector2 = entry if entry is Vector2 else entry.get("pos", Vector2.ZERO)
+		shooter.position = pos
+		if entry is Dictionary:
+			shooter.locked = entry.get("locked", false)
+			if entry.has("rotation"):
+				shooter.rotation = entry.rotation
+			elif entry.has("rotation_degrees"):
+				shooter.rotation_degrees = entry.rotation_degrees
+		shooter.fire_bomb.connect(_on_shooter_fire)
+		shooters_root.add_child(shooter)
+
+
+func _on_shooter_fire(spawn_pos: Vector2, velocity: Vector2) -> void:
+	if current_mode != Mode.PLAY:
+		return
+	var bomb: RigidBody2D = RigidBody2D.new()
+	bomb.set_script(BombScene)
+	bomb.position = spawn_pos
+	bomb.variant = "blue"
+	bomb.exploded.connect(_on_bomb_exploded)
+	bombs_root.add_child(bomb)
+	bomb.freeze = false
+	bomb.linear_velocity = velocity
+	bomb.gravity_scale = 0.0
 
 
 func _spawn_boulders(rects: Array) -> void:
@@ -101,10 +217,23 @@ func _spawn_boulders(rects: Array) -> void:
 func _set_mode(m: int) -> void:
 	current_mode = m
 	win_panel.hide()
-	for spring in springs_root.get_children():
-		if spring.has_method("set_editing"):
-			spring.set_editing(m == Mode.EDIT)
 	if m == Mode.EDIT:
+		if _track_snapshot.size() > 0:
+			_restore_world_to_level()
+		for spring in springs_root.get_children():
+			if spring.has_method("set_editing"):
+				spring.set_editing(true)
+		for bomb in bombs_root.get_children():
+			if bomb.has_method("disarm"):
+				bomb.disarm()
+			if bomb.has_method("set_editing"):
+				bomb.set_editing(true)
+		for poison in poisons_root.get_children():
+			if poison.has_method("set_editing"):
+				poison.set_editing(true)
+		for shooter in shooters_root.get_children():
+			if shooter.has_method("set_editing"):
+				shooter.set_editing(true)
 		marble.freeze = true
 		marble.linear_velocity = Vector2.ZERO
 		marble.angular_velocity = 0.0
@@ -113,12 +242,34 @@ func _set_mode(m: int) -> void:
 		edit_button.disabled = true
 		play_button.disabled = false
 	else:
+		_track_snapshot = track_editor.snapshot_track()
+		for spring in springs_root.get_children():
+			if spring.has_method("set_editing"):
+				spring.set_editing(false)
+		for bomb in bombs_root.get_children():
+			if bomb.has_method("set_editing"):
+				bomb.set_editing(false)
+			if bomb.has_method("arm"):
+				bomb.arm()
+		for poison in poisons_root.get_children():
+			if poison.has_method("set_editing"):
+				poison.set_editing(false)
+		for shooter in shooters_root.get_children():
+			if shooter.has_method("set_editing"):
+				shooter.set_editing(false)
 		track_editor.set_editing(false)
 		_teleport_marble(track_editor.get_start_position())
 		marble.show()
 		marble.freeze = false
 		edit_button.disabled = false
 		play_button.disabled = false
+
+
+func _restore_world_to_level() -> void:
+	if _track_snapshot.size() > 0:
+		track_editor.restore_track(_track_snapshot)
+		_track_snapshot = PackedVector2Array()
+	_spawn_world()
 
 
 func _teleport_marble(target_pos: Vector2) -> void:
@@ -136,6 +287,35 @@ func _on_goal_body_entered(body: Node) -> void:
 	if current_mode == Mode.PLAY and body == marble:
 		marble.freeze = true
 		_on_level_won()
+
+
+func _on_bomb_exploded(center: Vector2, radius: float) -> void:
+	track_editor.destroy_in_radius(center, radius)
+	for spring in springs_root.get_children():
+		if spring.variant == "orange":
+			continue
+		if spring.global_position.distance_to(center) <= radius:
+			spring.queue_free()
+	var surviving_boulders: Array = []
+	for child in boulders_root.get_children():
+		if child.global_position.distance_to(center) <= radius:
+			child.queue_free()
+		else:
+			surviving_boulders.append(child)
+	for spring in springs_root.get_children():
+		if "boulders" in spring:
+			var rects: Array = []
+			for b in surviving_boulders:
+				var shape_node: CollisionShape2D = b.get_node_or_null("CollisionShape2D")
+				if shape_node == null:
+					for c in b.get_children():
+						if c is CollisionShape2D:
+							shape_node = c
+							break
+				if shape_node and shape_node.shape is RectangleShape2D:
+					var size: Vector2 = (shape_node.shape as RectangleShape2D).size
+					rects.append(Rect2(b.global_position - size * 0.5, size))
+			spring.boulders = rects
 
 
 func _on_level_won() -> void:
@@ -172,6 +352,37 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _reset_marble() -> void:
+	if _track_snapshot.size() > 0:
+		_restore_world_to_level()
+		for spring in springs_root.get_children():
+			if spring.has_method("set_editing"):
+				spring.set_editing(false)
+		for bomb in bombs_root.get_children():
+			if bomb.has_method("set_editing"):
+				bomb.set_editing(false)
+		for poison in poisons_root.get_children():
+			if poison.has_method("set_editing"):
+				poison.set_editing(false)
+		for shooter in shooters_root.get_children():
+			if shooter.has_method("set_editing"):
+				shooter.set_editing(false)
+	else:
+		_spawn_poisons(_level_poisons)
+		_spawn_shooters(_level_shooters)
+		for poison in poisons_root.get_children():
+			if poison.has_method("set_editing"):
+				poison.set_editing(false)
+		for shooter in shooters_root.get_children():
+			if shooter.has_method("set_editing"):
+				shooter.set_editing(false)
+		# also clear in-flight blue bombs
+		for bomb in bombs_root.get_children():
+			if bomb.variant == "blue":
+				bomb.queue_free()
+	for bomb in bombs_root.get_children():
+		if bomb.has_method("arm"):
+			bomb.arm()
+	_track_snapshot = track_editor.snapshot_track()
 	_teleport_marble(track_editor.get_start_position())
 	marble.freeze = false
 	win_panel.hide()
