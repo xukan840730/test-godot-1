@@ -5,6 +5,7 @@ const SpringScene = preload("res://spring.gd")
 const BombScene = preload("res://bomb.gd")
 const PoisonScene = preload("res://poison_block.gd")
 const ShooterScene = preload("res://bomb_shooter.gd")
+const SpikeScene = preload("res://spike.gd")
 const SAVE_PATH: String = "user://progress.save"
 
 enum Mode { EDIT, PLAY }
@@ -22,10 +23,17 @@ enum Mode { EDIT, PLAY }
 @onready var level_dropdown: OptionButton = $HUD/Toolbar/LevelDropdown
 @onready var reset_progress_button: Button = $HUD/Toolbar/ResetProgressButton
 @onready var reset_confirm_dialog: ConfirmationDialog = $HUD/ResetConfirmDialog
+@onready var hud: CanvasLayer = $HUD
+@onready var menu_button: Button = $HUD/Toolbar/MenuButton
+@onready var main_menu: CanvasLayer = $MainMenu
+@onready var level_grid: GridContainer = $MainMenu/Root/VBox/Columns/LevelsPanel/LevelsMargin/LevelsVBox/LevelsScroll/LevelGrid
+@onready var guide_text: RichTextLabel = $MainMenu/Root/VBox/Columns/GuidePanel/GuideMargin/GuideVBox/GuideScroll/GuideText
+@onready var menu_reset_button: Button = $MainMenu/Root/VBox/Footer/ResetButton
 
 var bombs_root: Node2D
 var poisons_root: Node2D
 var shooters_root: Node2D
+var spikes_root: Node2D
 var current_mode: int = Mode.EDIT
 var current_level_index: int = 0
 var highest_unlocked_index: int = 0
@@ -36,6 +44,7 @@ var _level_springs: Array = []
 var _level_bombs: Array = []
 var _level_poisons: Array = []
 var _level_shooters: Array = []
+var _level_spikes: Array = []
 
 
 func _ready() -> void:
@@ -48,6 +57,9 @@ func _ready() -> void:
 	shooters_root = Node2D.new()
 	shooters_root.name = "Shooters"
 	add_child(shooters_root)
+	spikes_root = Node2D.new()
+	spikes_root.name = "Spikes"
+	add_child(spikes_root)
 	_load_progress()
 	win_panel.hide()
 	goal.body_entered.connect(_on_goal_body_entered)
@@ -58,7 +70,64 @@ func _ready() -> void:
 	reset_confirm_dialog.confirmed.connect(_on_reset_progress_confirmed)
 	_populate_level_dropdown()
 	level_dropdown.item_selected.connect(_on_level_selected)
+	menu_button.pressed.connect(_show_main_menu)
+	menu_reset_button.pressed.connect(func(): reset_confirm_dialog.popup_centered())
+	_populate_guide_text()
 	_load_level(0)
+	_show_main_menu()
+
+
+func _show_main_menu() -> void:
+	_populate_level_grid()
+	main_menu.visible = true
+	hud.visible = false
+
+
+func _hide_main_menu() -> void:
+	main_menu.visible = false
+	hud.visible = true
+
+
+func _populate_level_grid() -> void:
+	for child in level_grid.get_children():
+		child.queue_free()
+	for i in Levels.LEVELS.size():
+		var level: Dictionary = Levels.LEVELS[i]
+		var unlocked: bool = i <= highest_unlocked_index
+		var btn: Button = Button.new()
+		btn.custom_minimum_size = Vector2(180, 56)
+		btn.text = level.name if unlocked else "🔒 " + level.name
+		btn.disabled = not unlocked
+		btn.pressed.connect(func(): _on_menu_level_chosen(i))
+		level_grid.add_child(btn)
+
+
+func _on_menu_level_chosen(idx: int) -> void:
+	_hide_main_menu()
+	_load_level(idx)
+
+
+func _populate_guide_text() -> void:
+	guide_text.text = "[b]Goal[/b]: roll the marble into the green square.\n\n" \
+		+ "[b]Edit / Play[/b]: top toolbar. Edit lets you reshape the track and place objects; Play runs the level. R or Enter restarts.\n\n" \
+		+ "[b]Track[/b]: drag points in Edit mode to reshape the path. Pinned points (locked levels) can't be moved.\n\n" \
+		+ "[b]Marble[/b]: red ball, affected by gravity. Don't let it leave the screen.\n\n" \
+		+ "[b]Bombs[/b]\n" \
+		+ "• [color=#999]Black[/color]: 3-second fuse, blasts terrain and most objects.\n" \
+		+ "• [color=#b070d0]Purple[/color]: locked bombs with 3-second fuse.\n" \
+		+ "• [color=#5090ff]Blue[/color]: shooter ammo. Explodes on contact with anything.\n\n" \
+		+ "[b]Bomb Shooters[/b]: dark grey square fires blue bombs every 1.5s. Drag to move; Q/E rotate ±45°, J/L rotate ±22.5°. [color=#b04dd0]Purple[/color] shooters are locked.\n\n" \
+		+ "[b]Springs[/b]\n" \
+		+ "• [color=#e0c020]Yellow[/color]: standard bounce.\n" \
+		+ "• [color=#5090ff]Blue[/color]: small bounce.\n" \
+		+ "• [color=#3fce5a]Green[/color]: standard bounce, bombproof.\n" \
+		+ "• [color=#e04040]Red[/color]: strong bounce.\n" \
+		+ "• [color=#ff8c00]Orange[/color]: has a small bounce and is bombproof.\n" \
+		+ "Q/E rotate the spring 45 degrees.\n\n" \
+		+ "[b]Boulders[/b]: orange blocks. Solid; can be destroyed by bomb blasts.\n\n" \
+		+ "[b]Poison[/b]: purple block with a cyan face. Touching it resets the level.\n\n" \
+		+ "[b]Spikes[/b]: grey block with metal tips. Resets the level on marble contact and instantly detonates any bomb that hits it. Bomb blasts destroy them.\n\n" \
+		+ "[b]Menu[/b]: the Menu toolbar button returns here."
 
 
 func _populate_level_dropdown() -> void:
@@ -87,6 +156,7 @@ func _load_level(idx: int) -> void:
 	_level_bombs = level.get("bombs", []).duplicate()
 	_level_poisons = level.get("poisons", []).duplicate()
 	_level_shooters = level.get("shooters", []).duplicate()
+	_level_spikes = level.get("spikes", []).duplicate()
 	_track_snapshot = PackedVector2Array()
 	_spawn_world()
 	level_dropdown.selected = idx
@@ -99,6 +169,7 @@ func _spawn_world() -> void:
 	_spawn_bombs(_level_bombs)
 	_spawn_poisons(_level_poisons)
 	_spawn_shooters(_level_shooters)
+	_spawn_spikes(_level_spikes)
 
 
 func _spawn_springs(positions: Array, boulder_rects: Array) -> void:
@@ -119,6 +190,8 @@ func _spawn_springs(positions: Array, boulder_rects: Array) -> void:
 				spring.bounce_strength = 1700.0
 			elif v == "orange":
 				spring.bounce_strength = 700.0
+			elif v == "green":
+				spring.bounce_strength = 1100.0
 			if entry.has("rotation"):
 				spring.rotation = entry.rotation
 		else:
@@ -160,6 +233,22 @@ func _on_poison_touched() -> void:
 		_reset_marble()
 
 
+func _spawn_spikes(positions: Array) -> void:
+	for child in spikes_root.get_children():
+		child.queue_free()
+	for entry in positions:
+		var spike: StaticBody2D = StaticBody2D.new()
+		spike.set_script(SpikeScene)
+		var pos: Vector2 = entry if entry is Vector2 else entry.get("pos", Vector2.ZERO)
+		spike.position = pos
+		if entry is Dictionary and entry.has("rotation"):
+			spike.rotation = entry.rotation
+		elif entry is Dictionary and entry.has("rotation_degrees"):
+			spike.rotation_degrees = entry.rotation_degrees
+		spike.marble_touched.connect(_on_poison_touched)
+		spikes_root.add_child(spike)
+
+
 func _spawn_shooters(positions: Array) -> void:
 	for child in shooters_root.get_children():
 		child.queue_free()
@@ -187,9 +276,11 @@ func _on_shooter_fire(spawn_pos: Vector2, velocity: Vector2) -> void:
 	bomb.variant = "blue"
 	bomb.exploded.connect(_on_bomb_exploded)
 	bombs_root.add_child(bomb)
-	bomb.freeze = false
+	bomb.set_editing(false)
 	bomb.linear_velocity = velocity
 	bomb.gravity_scale = 0.0
+	bomb.linear_damp = 0.0
+	bomb.angular_damp = 0.0
 
 
 func _spawn_boulders(rects: Array) -> void:
@@ -234,6 +325,9 @@ func _set_mode(m: int) -> void:
 		for shooter in shooters_root.get_children():
 			if shooter.has_method("set_editing"):
 				shooter.set_editing(true)
+		for spike in spikes_root.get_children():
+			if spike.has_method("set_editing"):
+				spike.set_editing(true)
 		marble.freeze = true
 		marble.linear_velocity = Vector2.ZERO
 		marble.angular_velocity = 0.0
@@ -257,6 +351,9 @@ func _set_mode(m: int) -> void:
 		for shooter in shooters_root.get_children():
 			if shooter.has_method("set_editing"):
 				shooter.set_editing(false)
+		for spike in spikes_root.get_children():
+			if spike.has_method("set_editing"):
+				spike.set_editing(false)
 		track_editor.set_editing(false)
 		_teleport_marble(track_editor.get_start_position())
 		marble.show()
@@ -292,7 +389,7 @@ func _on_goal_body_entered(body: Node) -> void:
 func _on_bomb_exploded(center: Vector2, radius: float) -> void:
 	track_editor.destroy_in_radius(center, radius)
 	for spring in springs_root.get_children():
-		if spring.variant == "orange":
+		if spring.variant == "orange" or spring.variant == "green":
 			continue
 		if spring.global_position.distance_to(center) <= radius:
 			spring.queue_free()
@@ -302,6 +399,11 @@ func _on_bomb_exploded(center: Vector2, radius: float) -> void:
 			child.queue_free()
 		else:
 			surviving_boulders.append(child)
+	for spike in spikes_root.get_children():
+		if spike.global_position.distance_to(center) <= radius:
+			spike.queue_free()
+	if current_mode == Mode.PLAY and not marble.freeze:
+		marble.sleeping = false
 	for spring in springs_root.get_children():
 		if "boulders" in spring:
 			var rects: Array = []
@@ -341,6 +443,8 @@ func _on_reset_progress_confirmed() -> void:
 	highest_unlocked_index = 0
 	_save_progress()
 	_populate_level_dropdown()
+	if main_menu.visible:
+		_populate_level_grid()
 	_load_level(0)
 
 
@@ -369,12 +473,16 @@ func _reset_marble() -> void:
 	else:
 		_spawn_poisons(_level_poisons)
 		_spawn_shooters(_level_shooters)
+		_spawn_spikes(_level_spikes)
 		for poison in poisons_root.get_children():
 			if poison.has_method("set_editing"):
 				poison.set_editing(false)
 		for shooter in shooters_root.get_children():
 			if shooter.has_method("set_editing"):
 				shooter.set_editing(false)
+		for spike in spikes_root.get_children():
+			if spike.has_method("set_editing"):
+				spike.set_editing(false)
 		# also clear in-flight blue bombs
 		for bomb in bombs_root.get_children():
 			if bomb.variant == "blue":

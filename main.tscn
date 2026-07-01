@@ -90,6 +90,11 @@ custom_minimum_size = Vector2(120, 36)
 layout_mode = 2
 text = "Reset Progress"
 
+[node name="MenuButton" type="Button" parent="HUD/Toolbar" unique_id=1992233101]
+custom_minimum_size = Vector2(96, 36)
+layout_mode = 2
+text = "Menu"
+
 [node name="WinPanel" type="VBoxContainer" parent="HUD" unique_id=850838516]
 offset_left = 480.0
 offset_top = 200.0
@@ -114,3 +119,119 @@ text = "Next Level →"
 title = "Reset Progress?"
 size = Vector2i(400, 120)
 dialog_text = "This will lock all levels except Level 1. Are you sure?"
+
+[node name="MainMenu" type="CanvasLayer" parent="." unique_id=1100200200]
+
+[node name="Background" type="ColorRect" parent="MainMenu" unique_id=1100200201]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.09, 0.13, 1)
+
+[node name="Root" type="MarginContainer" parent="MainMenu" unique_id=1100200202]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 24
+
+[node name="VBox" type="VBoxContainer" parent="MainMenu/Root" unique_id=1100200203]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Title" type="Label" parent="MainMenu/Root/VBox" unique_id=1100200204]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "Marble Track"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="MainMenu/Root/VBox" unique_id=1100200205]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Pick a level, or read the guide below."
+horizontal_alignment = 1
+
+[node name="Columns" type="HBoxContainer" parent="MainMenu/Root/VBox" unique_id=1100200206]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 24
+
+[node name="LevelsPanel" type="PanelContainer" parent="MainMenu/Root/VBox/Columns" unique_id=1100200207]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.2
+
+[node name="LevelsMargin" type="MarginContainer" parent="MainMenu/Root/VBox/Columns/LevelsPanel" unique_id=1100200208]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="LevelsVBox" type="VBoxContainer" parent="MainMenu/Root/VBox/Columns/LevelsPanel/LevelsMargin" unique_id=1100200209]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="LevelsHeader" type="Label" parent="MainMenu/Root/VBox/Columns/LevelsPanel/LevelsMargin/LevelsVBox" unique_id=1100200210]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "Levels"
+
+[node name="LevelsScroll" type="ScrollContainer" parent="MainMenu/Root/VBox/Columns/LevelsPanel/LevelsMargin/LevelsVBox" unique_id=1100200211]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LevelGrid" type="GridContainer" parent="MainMenu/Root/VBox/Columns/LevelsPanel/LevelsMargin/LevelsVBox/LevelsScroll" unique_id=1100200212]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 3
+
+[node name="GuidePanel" type="PanelContainer" parent="MainMenu/Root/VBox/Columns" unique_id=1100200213]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="GuideMargin" type="MarginContainer" parent="MainMenu/Root/VBox/Columns/GuidePanel" unique_id=1100200214]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="GuideVBox" type="VBoxContainer" parent="MainMenu/Root/VBox/Columns/GuidePanel/GuideMargin" unique_id=1100200215]
+layout_mode = 2
+
+[node name="GuideHeader" type="Label" parent="MainMenu/Root/VBox/Columns/GuidePanel/GuideMargin/GuideVBox" unique_id=1100200216]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "How to Play"
+
+[node name="GuideScroll" type="ScrollContainer" parent="MainMenu/Root/VBox/Columns/GuidePanel/GuideMargin/GuideVBox" unique_id=1100200217]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="GuideText" type="RichTextLabel" parent="MainMenu/Root/VBox/Columns/GuidePanel/GuideMargin/GuideVBox/GuideScroll" unique_id=1100200218]
+custom_minimum_size = Vector2(0, 400)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+
+[node name="Footer" type="HBoxContainer" parent="MainMenu/Root/VBox" unique_id=1100200219]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ResetButton" type="Button" parent="MainMenu/Root/VBox/Footer" unique_id=1100200220]
+custom_minimum_size = Vector2(160, 40)
+layout_mode = 2
+text = "Reset Progress"

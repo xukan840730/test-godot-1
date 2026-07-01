@@ -42,6 +42,12 @@ func _ready() -> void:
 func _on_body_entered(_body: Node) -> void:
 	if variant != "blue" or exploded_already or editing:
 		return
+	explode_now()
+
+
+func explode_now() -> void:
+	if exploded_already or editing:
+		return
 	exploded_already = true
 	armed = false
 	emit_signal("exploded", global_position, BLAST_RADIUS)
@@ -94,19 +100,14 @@ func _draw() -> void:
 		body_color = BLUE_BODY
 	draw_circle(Vector2.ZERO, RADIUS, body_color)
 	draw_arc(Vector2.ZERO, RADIUS, 0.0, TAU, 28, Color(0.0, 0.0, 0.0, 1.0), 1.5, true)
-	if variant == "blue":
-		# tiny white "shock" lines instead of fuse
-		for i in 6:
-			var a: float = float(i) / 6.0 * TAU
-			var inner: Vector2 = Vector2.from_angle(a) * (RADIUS - 6.0)
-			var outer: Vector2 = Vector2.from_angle(a) * (RADIUS + 4.0)
-			draw_line(inner, outer, Color(1.0, 1.0, 1.0, 0.9), 2.0)
-		if editing and hovered and not locked:
-			draw_arc(Vector2.ZERO, RADIUS + 3.0, 0.0, TAU, 28, Color(1.0, 0.4, 0.0, 1.0), 2.0, true)
-		return
 	var fuse_top: Vector2 = Vector2(0, -RADIUS)
 	var fuse_tip: Vector2 = Vector2(6, -RADIUS - 10)
 	draw_line(fuse_top, fuse_tip, FUSE_COLOR, 2.0)
+	if variant == "blue":
+		draw_circle(fuse_tip, 4.0, SPARK_COLOR)
+		if editing and hovered and not locked:
+			draw_arc(Vector2.ZERO, RADIUS + 3.0, 0.0, TAU, 28, Color(1.0, 0.4, 0.0, 1.0), 2.0, true)
+		return
 	if armed:
 		draw_circle(fuse_tip, 4.0, SPARK_COLOR)
 		var seconds_left: int = int(ceil(fuse_remaining))

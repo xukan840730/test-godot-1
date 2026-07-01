@@ -14,6 +14,9 @@ const RED_OUTLINE: Color = Color(0.4, 0.0, 0.0, 1.0)
 const ORANGE_BODY: Color = Color(1.0, 0.55, 0.0, 1.0)
 const ORANGE_COIL: Color = Color(0.7, 0.35, 0.0, 1.0)
 const ORANGE_OUTLINE: Color = Color(0.4, 0.2, 0.0, 1.0)
+const GREEN_BODY: Color = Color(0.3, 0.85, 0.35, 1.0)
+const GREEN_COIL: Color = Color(0.1, 0.55, 0.2, 1.0)
+const GREEN_OUTLINE: Color = Color(0.0, 0.3, 0.05, 1.0)
 
 @export var bounce_strength: float = 1100.0
 var variant: String = "yellow"
@@ -52,6 +55,9 @@ func _on_body_entered(body: Node) -> void:
 		return
 	if body is RigidBody2D:
 		var rb: RigidBody2D = body
+		if "variant" in rb and rb.variant == "blue" and rb.has_method("explode_now"):
+			rb.explode_now()
+			return
 		var bounce_dir: Vector2 = Vector2.UP.rotated(rotation)
 		var tangent: Vector2 = bounce_dir.orthogonal()
 		var tangent_speed: float = rb.linear_velocity.dot(tangent) * 0.6
@@ -88,6 +94,10 @@ func _draw() -> void:
 		body_color = ORANGE_BODY
 		coil_color = ORANGE_COIL
 		base_outline = ORANGE_OUTLINE
+	elif variant == "green":
+		body_color = GREEN_BODY
+		coil_color = GREEN_COIL
+		base_outline = GREEN_OUTLINE
 	draw_rect(rect, body_color, true)
 	var outline_color: Color = Color(1.0, 0.4, 0.0, 1.0) if (editing and hovered) else base_outline
 	var outline_width: float = 3.0 if (editing and hovered) else 2.0

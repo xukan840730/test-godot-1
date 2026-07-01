@@ -7,6 +7,8 @@ const BODY_COLOR: Color = Color(0.25, 0.25, 0.3, 1.0)
 const BARREL_COLOR: Color = Color(0.4, 0.4, 0.45, 1.0)
 const OUTLINE_COLOR: Color = Color(0.05, 0.05, 0.1, 1.0)
 const ACCENT_COLOR: Color = Color(0.2, 0.5, 1.0, 1.0)
+const LOCKED_BODY_COLOR: Color = Color(0.4, 0.15, 0.55, 1.0)
+const LOCKED_BARREL_COLOR: Color = Color(0.6, 0.3, 0.75, 1.0)
 
 signal fire_bomb(spawn_pos: Vector2, velocity: Vector2)
 
@@ -42,13 +44,15 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	var hs: float = SIZE * 0.5
+	var body_color: Color = LOCKED_BODY_COLOR if locked else BODY_COLOR
+	var barrel_color: Color = LOCKED_BARREL_COLOR if locked else BARREL_COLOR
 	# body box
 	var rect: Rect2 = Rect2(Vector2(-hs, -hs), Vector2(SIZE, SIZE))
-	draw_rect(rect, BODY_COLOR, true)
+	draw_rect(rect, body_color, true)
 	draw_rect(rect, OUTLINE_COLOR, false, 2.0)
 	# barrel pointing along +X (rotation rotates the whole node)
 	var barrel: Rect2 = Rect2(Vector2(0, -6), Vector2(hs + 8, 12))
-	draw_rect(barrel, BARREL_COLOR, true)
+	draw_rect(barrel, barrel_color, true)
 	draw_rect(barrel, OUTLINE_COLOR, false, 2.0)
 	# blue accent dot showing it shoots blue bombs
 	draw_circle(Vector2(hs + 2, 0), 3.5, ACCENT_COLOR)
@@ -84,5 +88,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_E:
 			rotation_degrees += 45.0
+			queue_redraw()
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_J:
+			rotation_degrees -= 22.5
+			queue_redraw()
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_L:
+			rotation_degrees += 22.5
 			queue_redraw()
 			get_viewport().set_input_as_handled()
