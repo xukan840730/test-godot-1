@@ -1,6 +1,6 @@
 extends StaticBody2D
 
-const SIZE: float = 36.0
+const SIZE: float = 54.0
 const FILL_COLOR: Color = Color(0.55, 0.55, 0.6, 1.0)
 const TIP_COLOR: Color = Color(0.85, 0.85, 0.9, 1.0)
 const OUTLINE_COLOR: Color = Color(0.1, 0.1, 0.15, 1.0)
@@ -11,17 +11,28 @@ var editing: bool = true
 
 
 func _ready() -> void:
+	var hs: float = SIZE * 0.5
+	var base_left: Vector2 = Vector2(-hs * 0.7, -hs)
+	var base_right: Vector2 = Vector2(hs * 0.7, -hs)
+	var tip: Vector2 = Vector2(0, -hs - SIZE * 0.75)
+	var tri_points: PackedVector2Array = PackedVector2Array([base_left, base_right, tip])
 	var shape: CollisionShape2D = CollisionShape2D.new()
-	var rect: RectangleShape2D = RectangleShape2D.new()
-	rect.size = Vector2(SIZE, SIZE)
-	shape.shape = rect
+	var tri: ConvexPolygonShape2D = ConvexPolygonShape2D.new()
+	tri.points = tri_points
+	shape.shape = tri
 	add_child(shape)
+	var margin: float = 20.0
+	var area_points: PackedVector2Array = PackedVector2Array([
+		base_left + Vector2(-margin, margin),
+		base_right + Vector2(margin, margin),
+		tip + Vector2(0, -margin),
+	])
 	var area: Area2D = Area2D.new()
 	area.name = "TouchArea"
 	var area_shape: CollisionShape2D = CollisionShape2D.new()
-	var area_rect: RectangleShape2D = RectangleShape2D.new()
-	area_rect.size = Vector2(SIZE, SIZE)
-	area_shape.shape = area_rect
+	var area_tri: ConvexPolygonShape2D = ConvexPolygonShape2D.new()
+	area_tri.points = area_points
+	area_shape.shape = area_tri
 	area.add_child(area_shape)
 	area.body_entered.connect(_on_body_entered)
 	add_child(area)
@@ -45,9 +56,6 @@ func _on_body_entered(body: Node) -> void:
 
 func _draw() -> void:
 	var hs: float = SIZE * 0.5
-	var rect: Rect2 = Rect2(Vector2(-hs, -hs), Vector2(SIZE, SIZE))
-	draw_rect(rect, FILL_COLOR, true)
-	draw_rect(rect, OUTLINE_COLOR, false, 2.0)
 	# single upward-pointing triangular tip centered on the top edge
 	var base_left: Vector2 = Vector2(-hs * 0.7, -hs)
 	var base_right: Vector2 = Vector2(hs * 0.7, -hs)

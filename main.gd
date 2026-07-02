@@ -63,6 +63,9 @@ func _ready() -> void:
 	_load_progress()
 	win_panel.hide()
 	goal.body_entered.connect(_on_goal_body_entered)
+	marble.contact_monitor = true
+	marble.max_contacts_reported = 8
+	marble.body_entered.connect(_on_marble_body_entered)
 	edit_button.pressed.connect(func(): _set_mode(Mode.EDIT))
 	play_button.pressed.connect(func(): _set_mode(Mode.PLAY))
 	next_button.pressed.connect(_on_next_pressed)
@@ -384,6 +387,13 @@ func _on_goal_body_entered(body: Node) -> void:
 	if current_mode == Mode.PLAY and body == marble:
 		marble.freeze = true
 		_on_level_won()
+
+
+func _on_marble_body_entered(body: Node) -> void:
+	if current_mode != Mode.PLAY:
+		return
+	if body is StaticBody2D and body.get_script() == SpikeScene:
+		_reset_marble()
 
 
 func _on_bomb_exploded(center: Vector2, radius: float) -> void:

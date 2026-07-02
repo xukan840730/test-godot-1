@@ -616,11 +616,7 @@ static var LEVELS: Array = [
 		]),
 		"locked_indices": [0, 1, 2, 3],
 		"no_draw_zones": [],
-		"boulders": [
-			Rect2(320, 400, 80, 80),
-			Rect2(680, 540, 80, 80),
-			Rect2(980, 580, 80, 80),
-		],
+		"boulders": [],
 		"spikes": [
 			Vector2(260, 302),
 			Vector2(520, 402),
@@ -635,5 +631,38 @@ static var LEVELS: Array = [
 			{"pos": Vector2(80, 660), "variant": "yellow"},
 		],
 		"poisons": [],
+	},
+	{
+		"name": "24 — Spikes & Poison",
+		"start": Vector2(140, 60),
+		"goal": Vector2(1220, 640),
+		"default_track": PackedVector2Array([
+			Vector2(80, 220),
+			Vector2(360, 340),
+			Vector2(700, 460),
+			Vector2(1000, 560),
+			Vector2(1200, 660),
+		]),
+		"locked_indices": [0, 1, 2, 3, 4],
+		"no_draw_zones": [],
+		"boulders": [
+			Rect2(500, 380, 80, 80),
+			Rect2(860, 500, 80, 80),
+		],
+		"spikes": [
+			Vector2(240, 322),
+			Vector2(820, 542),
+		],
+		"bombs": [
+			Vector2(300, 660),
+		],
+		"springs": [
+			{"pos": Vector2(80, 660), "variant": "blue"},
+			{"pos": Vector2(180, 660), "variant": "orange"}
+		],
+		"poisons": [
+			Vector2(460, 380),
+			Vector2(940, 500),
+		],
 	},
 ]
