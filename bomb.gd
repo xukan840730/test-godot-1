@@ -3,14 +3,18 @@ extends RigidBody2D
 const RADIUS: float = 18.0
 const BLAST_RADIUS: float = 90.0
 const FUSE_SECONDS: float = 3.0
+const YELLOW_FUSE_SECONDS: float = 4.0
+const ORANGE_FUSE_SECONDS: float = 5.0
 const BLACK_BODY: Color = Color(0.15, 0.15, 0.18, 1.0)
 const PURPLE_BODY: Color = Color(0.55, 0.2, 0.7, 1.0)
 const BLUE_BODY: Color = Color(0.2, 0.5, 1.0, 1.0)
+const YELLOW_BODY: Color = Color(0.95, 0.85, 0.15, 1.0)
+const ORANGE_BODY: Color = Color(1.0, 0.5, 0.1, 1.0)
 const FUSE_COLOR: Color = Color(0.85, 0.85, 0.85, 1.0)
 const SPARK_COLOR: Color = Color(1.0, 0.7, 0.1, 1.0)
 const TEXT_COLOR: Color = Color(1.0, 1.0, 1.0, 1.0)
 
-signal exploded(center: Vector2, radius: float)
+signal exploded(center: Vector2, radius: float, strength: int)
 
 var variant: String = "black"
 var locked: bool = false
@@ -45,25 +49,41 @@ func _on_body_entered(_body: Node) -> void:
 	explode_now()
 
 
+func get_strength() -> int:
+	if variant == "orange":
+		return 3
+	if variant == "yellow":
+		return 2
+	return 1
+
+
+func get_fuse_seconds() -> float:
+	if variant == "orange":
+		return ORANGE_FUSE_SECONDS
+	if variant == "yellow":
+		return YELLOW_FUSE_SECONDS
+	return FUSE_SECONDS
+
+
 func explode_now() -> void:
 	if exploded_already or editing:
 		return
 	exploded_already = true
 	armed = false
-	emit_signal("exploded", global_position, BLAST_RADIUS)
+	emit_signal("exploded", global_position, BLAST_RADIUS, get_strength())
 	queue_free()
 
 
 func arm() -> void:
 	armed = true
-	fuse_remaining = FUSE_SECONDS
+	fuse_remaining = get_fuse_seconds()
 	exploded_already = false
 	queue_redraw()
 
 
 func disarm() -> void:
 	armed = false
-	fuse_remaining = FUSE_SECONDS
+	fuse_remaining = get_fuse_seconds()
 	exploded_already = false
 	visible = true
 	queue_redraw()
@@ -88,7 +108,7 @@ func _process(delta: float) -> void:
 		if fuse_remaining <= 0.0:
 			exploded_already = true
 			armed = false
-			emit_signal("exploded", global_position, BLAST_RADIUS)
+			emit_signal("exploded", global_position, BLAST_RADIUS, get_strength())
 			queue_free()
 
 
@@ -98,6 +118,10 @@ func _draw() -> void:
 		body_color = PURPLE_BODY
 	elif variant == "blue":
 		body_color = BLUE_BODY
+	elif variant == "yellow":
+		body_color = YELLOW_BODY
+	elif variant == "orange":
+		body_color = ORANGE_BODY
 	draw_circle(Vector2.ZERO, RADIUS, body_color)
 	draw_arc(Vector2.ZERO, RADIUS, 0.0, TAU, 28, Color(0.0, 0.0, 0.0, 1.0), 1.5, true)
 	var fuse_top: Vector2 = Vector2(0, -RADIUS)

@@ -19,6 +19,7 @@ var locked_indices: Array = []
 var start_marker: Vector2 = Vector2.ZERO
 var dragged_index: int = -1
 var editing: bool = true
+var _locked_indices_snapshot: Array = []
 
 @onready var collision_polygon: CollisionPolygon2D = get_node(collision_polygon_path)
 @onready var fill_polygon: Polygon2D = get_node(fill_polygon_path)
@@ -50,11 +51,13 @@ func load_level(level: Dictionary) -> void:
 
 
 func snapshot_track() -> PackedVector2Array:
+	_locked_indices_snapshot = locked_indices.duplicate()
 	return top_points.duplicate()
 
 
 func restore_track(snapshot: PackedVector2Array) -> void:
 	top_points = snapshot.duplicate()
+	locked_indices = _locked_indices_snapshot.duplicate()
 	_rebuild_polygon()
 	queue_redraw()
 

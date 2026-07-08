@@ -116,20 +116,24 @@ func _populate_guide_text() -> void:
 		+ "[b]Track[/b]: drag points in Edit mode to reshape the path. Pinned points (locked levels) can't be moved.\n\n" \
 		+ "[b]Marble[/b]: red ball, affected by gravity. Don't let it leave the screen.\n\n" \
 		+ "[b]Bombs[/b]\n" \
-		+ "• [color=#999]Black[/color]: 3-second fuse, blasts terrain and most objects.\n" \
-		+ "• [color=#b070d0]Purple[/color]: locked bombs with 3-second fuse.\n" \
-		+ "• [color=#5090ff]Blue[/color]: shooter ammo. Explodes on contact with anything.\n\n" \
+		+ "• [color=#999]Black[/color]: 3-second fuse, blasts terrain and most objects. Strength 1.\n" \
+		+ "• [color=#b070d0]Purple[/color]: locked bombs with 3-second fuse. Strength 1.\n" \
+		+ "• [color=#5090ff]Blue[/color]: shooter ammo. Explodes on contact with anything. Strength 1.\n" \
+		+ "• [color=#f2d926]Yellow[/color]: 4-second fuse. Strength 2 — powerful enough to break poison blocks.\n" \
+		+ "• [color=#ff8c00]Orange[/color]: 5-second fuse. Strength 3 — powerful enough to destroy orange springs.\n\n" \
 		+ "[b]Bomb Shooters[/b]: dark grey square fires blue bombs every 1.5s. Drag to move; Q/E rotate ±45°, J/L rotate ±22.5°. [color=#b04dd0]Purple[/color] shooters are locked.\n\n" \
 		+ "[b]Springs[/b]\n" \
 		+ "• [color=#e0c020]Yellow[/color]: standard bounce.\n" \
 		+ "• [color=#5090ff]Blue[/color]: small bounce.\n" \
-		+ "• [color=#3fce5a]Green[/color]: standard bounce, bombproof.\n" \
+		+ "• [color=#3fce5a]Green[/color]: standard bounce, resists strength-1 blasts. Strength-2 (yellow) bombs destroy it.\n" \
 		+ "• [color=#e04040]Red[/color]: strong bounce.\n" \
-		+ "• [color=#ff8c00]Orange[/color]: has a small bounce and is bombproof.\n" \
+		+ "• [color=#ff8c00]Orange[/color]: has a small bounce and resists strength-1 and 2 blasts. Strength-3 (orange) bombs destroy it.\n" \
 		+ "Q/E rotate the spring 45 degrees.\n\n" \
 		+ "[b]Boulders[/b]: orange blocks. Solid; can be destroyed by bomb blasts.\n\n" \
-		+ "[b]Poison[/b]: purple block with a cyan face. Touching it resets the level.\n\n" \
-		+ "[b]Spikes[/b]: grey block with metal tips. Resets the level on marble contact and instantly detonates any bomb that hits it. Bomb blasts destroy them.\n\n" \
+		+ "[b]Poison[/b]: purple block with a cyan face. Touching it resets the level. Only strength-2 (yellow) bombs can destroy it.\n\n" \
+		+ "[b]Spikes[/b]\n" \
+		+ "• [color=#d0d0d8]Light grey[/color]: resets the level on marble contact and instantly detonates any bomb that hits it. Bomb blasts destroy them.\n" \
+		+ "• [color=#3a3a44]Dark grey[/color]: same as light grey, but indestructible — no bomb of any strength can remove them.\n\n" \
 		+ "[b]Menu[/b]: the Menu toolbar button returns here."
 
 
@@ -244,10 +248,12 @@ func _spawn_spikes(positions: Array) -> void:
 		spike.set_script(SpikeScene)
 		var pos: Vector2 = entry if entry is Vector2 else entry.get("pos", Vector2.ZERO)
 		spike.position = pos
-		if entry is Dictionary and entry.has("rotation"):
-			spike.rotation = entry.rotation
-		elif entry is Dictionary and entry.has("rotation_degrees"):
-			spike.rotation_degrees = entry.rotation_degrees
+		if entry is Dictionary:
+			spike.variant = entry.get("variant", "light")
+			if entry.has("rotation"):
+				spike.rotation = entry.rotation
+			elif entry.has("rotation_degrees"):
+				spike.rotation_degrees = entry.rotation_degrees
 		spike.marble_touched.connect(_on_poison_touched)
 		spikes_root.add_child(spike)
 
@@ -396,22 +402,30 @@ func _on_marble_body_entered(body: Node) -> void:
 		_reset_marble()
 
 
-func _on_bomb_exploded(center: Vector2, radius: float) -> void:
+func _on_bomb_exploded(center: Vector2, radius: float, strength: int) -> void:
 	track_editor.destroy_in_radius(center, radius)
 	for spring in springs_root.get_children():
-		if spring.variant == "orange" or spring.variant == "green":
+		if spring.variant == "orange" and strength < 3:
+			continue
+		if spring.variant == "green" and strength < 2:
 			continue
 		if spring.global_position.distance_to(center) <= radius:
 			spring.queue_free()
 	var surviving_boulders: Array = []
 	for child in boulders_root.get_children():
-		if child.global_position.distance_to(center) <= radius:
+		if _boulder_in_blast(child, center, radius):
 			child.queue_free()
 		else:
 			surviving_boulders.append(child)
 	for spike in spikes_root.get_children():
+		if spike.variant == "dark":
+			continue
 		if spike.global_position.distance_to(center) <= radius:
 			spike.queue_free()
+	if strength >= 2:
+		for poison in poisons_root.get_children():
+			if poison.global_position.distance_to(center) <= radius:
+				poison.queue_free()
 	if current_mode == Mode.PLAY and not marble.freeze:
 		marble.sleeping = false
 	for spring in springs_root.get_children():
@@ -428,6 +442,24 @@ func _on_bomb_exploded(center: Vector2, radius: float) -> void:
 					var size: Vector2 = (shape_node.shape as RectangleShape2D).size
 					rects.append(Rect2(b.global_position - size * 0.5, size))
 			spring.boulders = rects
+
+
+func _boulder_in_blast(body: Node, center: Vector2, radius: float) -> bool:
+	var shape_node: CollisionShape2D = body.get_node_or_null("CollisionShape2D")
+	if shape_node == null:
+		for c in body.get_children():
+			if c is CollisionShape2D:
+				shape_node = c
+				break
+	if shape_node == null or not shape_node.shape is RectangleShape2D:
+		return body.global_position.distance_to(center) <= radius
+	var size: Vector2 = (shape_node.shape as RectangleShape2D).size
+	var rect: Rect2 = Rect2(body.global_position - size * 0.5, size)
+	var closest: Vector2 = Vector2(
+		clamp(center.x, rect.position.x, rect.position.x + rect.size.x),
+		clamp(center.y, rect.position.y, rect.position.y + rect.size.y)
+	)
+	return closest.distance_to(center) <= radius
 
 
 func _on_level_won() -> void:

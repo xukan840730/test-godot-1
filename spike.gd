@@ -3,10 +3,12 @@ extends StaticBody2D
 const SIZE: float = 54.0
 const FILL_COLOR: Color = Color(0.55, 0.55, 0.6, 1.0)
 const TIP_COLOR: Color = Color(0.85, 0.85, 0.9, 1.0)
+const DARK_TIP_COLOR: Color = Color(0.22, 0.22, 0.26, 1.0)
 const OUTLINE_COLOR: Color = Color(0.1, 0.1, 0.15, 1.0)
 
 signal marble_touched()
 
+var variant: String = "light"
 var editing: bool = true
 
 
@@ -60,7 +62,8 @@ func _draw() -> void:
 	var base_left: Vector2 = Vector2(-hs * 0.7, -hs)
 	var base_right: Vector2 = Vector2(hs * 0.7, -hs)
 	var tip: Vector2 = Vector2(0, -hs - SIZE * 0.75)
+	var tip_color: Color = DARK_TIP_COLOR if variant == "dark" else TIP_COLOR
 	draw_polygon(PackedVector2Array([base_left, tip, base_right]),
-		PackedColorArray([TIP_COLOR, TIP_COLOR, TIP_COLOR]))
+		PackedColorArray([tip_color, tip_color, tip_color]))
 	draw_line(base_left, tip, OUTLINE_COLOR, 1.5)
 	draw_line(tip, base_right, OUTLINE_COLOR, 1.5)
